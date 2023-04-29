@@ -1,0 +1,97 @@
+print("Note: Consider '$' as an epsilon ")
+print("Please follow this below Syntax for entering any grammar: ")
+print("Example: S ->ABC \n\tA->A+ B | $ \n\t B -> aBA' | BA| $\n\tB -> Bn | e\n")
+
+def validate_production(prod):
+    prod = prod.replace(' ', '')
+    if '->' not in prod:
+        print("Not a Valid Production")
+        return False
+    return True
+
+def to_dict(l,productions):
+    for i in l:
+        tmp = i.replace(' ', '').split('->')
+        if('|' in tmp[1]):
+            productions[tmp[0]] = tmp[1].split('|')
+        else:
+            productions[tmp[0]] = [tmp[1]]
+    return productions
+
+def input_data():
+    n = int(input("Enter the numner of productions: "))
+    productions = {}
+    l = []
+    for i in range(n):
+        while(True):
+            tmp_prod = input(f"\nEnter production {i+1}:")
+            if (validate_production(tmp_prod)):
+                l.append(tmp_prod)
+                break
+    print("\nInputed productions are: ", *l, sep="\n",end="\n\n")
+    productions = to_dict(l, productions)
+    return n, productions
+
+def is_leftRecursive(k,l):
+    for i in l:
+        if k == i[0]:
+            return True
+    return False
+
+def other_terminal_LR(productions,nterminals):
+    nterm = []
+    for key in nterminals:
+        nterm = [i[0] for i in productions[key] if i[0] in nterminals]
+        for nterminal, lst_prod in productions.items():
+            if(key != nterminal):
+                nterm1 = [i[0] for i in lst_prod]
+                for prod in lst_prod:
+                    if(key == prod[0] and nterminal in nterm):
+                        if(len(nterm) >len(nterm1)):
+                            break
+                        else:
+                            productions[nterminal].extend([i+prod[1:] for i in productions[key]])
+                            productions[nterminal].remove(prod)
+    return productions
+
+def rm_left_recursion(productions):
+    nterminals = productions.keys()
+    new_LR_prod = {}
+    new_productions = dict(zip(nterminals, ([] for _ in nterminals)))
+    productions = other_terminal_LR(productions,nterminals)
+
+    for k, v in productions.items():
+        if (is_leftRecursive(k, v)):
+            new_LR_prod[k+"'"] = []
+            for data in v:
+                if k == data[0][0]:
+                    new_LR_prod[k+"'"].append(data[1:]+k+"' | $")
+                else:
+                    new_productions[k].append(data+k+"'")
+        else:
+            new_productions[k].extend(v)
+
+    return to_production(process_new_productions(new_productions)),to_production(process_new_LR_prod(new_LR_prod))
+
+def process_new_productions(x):
+    for key, lst in x.items():
+        for i, s in enumerate(lst):
+            if(s[0] == '$' and len(s) > 1):
+                x[key][i] = x[key][i].replace("$",'')
+    return x
+
+def process_new_LR_prod(x):
+    for key, lst in x.items():
+        for i in range(len(lst)-1):
+            x[key][i] = x[key][i].replace("| $",'')
+    return x
+
+def to_production(prod):
+    return [f"{key} -> {' | '.join(value)}" for key, value in prod.items()]
+
+
+n, productions = input_data()
+new_productions, new_LR_prod = rm_left_recursion(productions)
+new_productions.extend(new_LR_prod)
+print("After removing the left recursion")
+print(*sorted(new_productions, key = lambda s: s[0]), sep="\n")
